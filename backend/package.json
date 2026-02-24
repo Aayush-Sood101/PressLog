@@ -1,16 +1,26 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Newspaper Management System Backend",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon server.js",
+    "start": "node server.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "@clerk/clerk-sdk-node": "^5.0.0",
+    "@supabase/supabase-js": "^2.39.0",
+    "exceljs": "^4.4.0",
+    "date-fns": "^3.0.6"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
   }
 }
