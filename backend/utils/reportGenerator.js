@@ -36,7 +36,8 @@ async function generateMonthlyReport(entries, universityName, month) {
   const headerRow = worksheet.addRow([
     'Date',
     'Day',
-    'Newspaper Rate',
+    'Newspaper',
+    'Rate (₹)',
     'Status',
     'Marked By',
     'Updated At'
@@ -55,7 +56,8 @@ async function generateMonthlyReport(entries, universityName, month) {
   worksheet.columns = [
     { width: 15 }, // Date
     { width: 12 }, // Day
-    { width: 15 }, // Rate
+    { width: 20 }, // Newspaper
+    { width: 12 }, // Rate
     { width: 15 }, // Status
     { width: 25 }, // Marked By
     { width: 20 }, // Updated At
@@ -69,8 +71,9 @@ async function generateMonthlyReport(entries, universityName, month) {
 
   entries.forEach(entry => {
     const date = new Date(entry.date);
-    const dayName = entry.newspapers?.day_of_week || '-';
-    const rate = entry.newspapers?.rate ? parseFloat(entry.newspapers.rate) : 0;
+    const dayName = entry.dayOfWeek || '-';
+    const newspaperName = entry.newspapers?.name || '-';
+    const rate = entry.rate ? parseFloat(entry.rate) : 0;
     const status = entry.status || 'unmarked';
     const markedBy = entry.markedByEmail || '-';
     const updatedAt = entry.updated_at 
@@ -90,14 +93,15 @@ async function generateMonthlyReport(entries, universityName, month) {
     const row = worksheet.addRow([
       format(date, 'yyyy-MM-dd'),
       dayName,
+      newspaperName,
       rate.toFixed(2),
       status.replace('_', ' ').toUpperCase(),
       markedBy,
       updatedAt
     ]);
 
-    // Color code status
-    const statusCell = row.getCell(4);
+    // Color code status (column index changed from 4 to 5)
+    const statusCell = row.getCell(5);
     if (status === 'received') {
       statusCell.fill = {
         type: 'pattern',

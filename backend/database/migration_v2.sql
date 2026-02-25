@@ -1,26 +1,12 @@
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- MIGRATION V2: Redesign newspaper schema to support named newspapers
+-- This script drops the old schema and creates the new one
+-- WARNING: This will delete all existing newspaper and entry data!
 
--- Universities Table
-CREATE TABLE universities (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name VARCHAR(255) NOT NULL UNIQUE,
-    admin_clerk_id VARCHAR(255) NOT NULL UNIQUE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- Step 1: Drop old tables (in reverse dependency order)
+DROP TABLE IF EXISTS newspaper_entries CASCADE;
+DROP TABLE IF EXISTS newspapers CASCADE;
 
--- Join Requests Table
-CREATE TABLE join_requests (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_clerk_id VARCHAR(255) NOT NULL,
-    university_id UUID NOT NULL REFERENCES universities(id) ON DELETE CASCADE,
-    status VARCHAR(20) NOT NULL CHECK (status IN ('pending', 'approved', 'rejected')),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(user_clerk_id, university_id)
-);
-
--- Newspapers Table (stores newspaper names per university)
+-- Step 2: Create new newspapers table (stores newspaper names)
 CREATE TABLE newspapers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     university_id UUID NOT NULL REFERENCES universities(id) ON DELETE CASCADE,
@@ -30,7 +16,7 @@ CREATE TABLE newspapers (
     UNIQUE(university_id, name)
 );
 
--- Newspaper Rates Table (day-wise rates for each newspaper per month)
+-- Step 3: Create newspaper_rates table (day-wise rates per newspaper per month)
 CREATE TABLE newspaper_rates (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     newspaper_id UUID NOT NULL REFERENCES newspapers(id) ON DELETE CASCADE,
@@ -42,7 +28,7 @@ CREATE TABLE newspaper_rates (
     UNIQUE(newspaper_id, month, day_of_week)
 );
 
--- Newspaper Entries Table (daily entries per newspaper)
+-- Step 4: Create newspaper_entries table (daily entries per newspaper)
 CREATE TABLE newspaper_entries (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     newspaper_id UUID NOT NULL REFERENCES newspapers(id) ON DELETE CASCADE,
@@ -54,20 +40,15 @@ CREATE TABLE newspaper_entries (
     UNIQUE(newspaper_id, date)
 );
 
--- Indexes for better query performance
-CREATE INDEX idx_join_requests_university ON join_requests(university_id);
-CREATE INDEX idx_join_requests_status ON join_requests(status);
+-- Step 5: Create indexes
 CREATE INDEX idx_newspapers_university ON newspapers(university_id);
-CREATE INDEX idx_newspaper_rates_newspaper_month ON newspaper_rates(newspaper_id, month);
+CREATE INDEX idx_newspaper_rates_newspaper_month ON newspaper_rates(newspaper_id, month);  
 CREATE INDEX idx_newspaper_entries_newspaper ON newspaper_entries(newspaper_id);
 CREATE INDEX idx_newspaper_entries_date ON newspaper_entries(date);
 
--- Enable Row Level Security
-ALTER TABLE universities ENABLE ROW LEVEL SECURITY;
-ALTER TABLE join_requests ENABLE ROW LEVEL SECURITY;
+-- Step 6: Enable RLS
 ALTER TABLE newspapers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE newspaper_rates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE newspaper_entries ENABLE ROW LEVEL SECURITY;
 
--- Note: RLS policies will be managed through backend JWT verification
--- For now, we'll use the service_role key which bypasses RLS
+-- Done! Schema v2 is now active.
