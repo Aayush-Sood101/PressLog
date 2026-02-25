@@ -217,7 +217,33 @@ cd frontend && rm -rf node_modules package-lock.json && npm install
 
 ---
 
-## 📞 Support
+## � Deployment
+
+Ready to deploy your application to production?
+
+### Quick Start
+- **Frontend**: Deploy to [Vercel](https://vercel.com)
+- **Backend**: Deploy to [Render](https://render.com)
+
+### Deployment Resources
+- 📘 **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Complete step-by-step deployment instructions
+- ✅ **[DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md)** - Pre-deployment checklist
+
+### What's Included
+Both deployment guides cover:
+- Platform setup and configuration
+- Environment variable configuration
+- Database setup
+- Clerk production configuration
+- CORS and security settings
+- Testing and verification steps
+- Common issues and troubleshooting
+
+Start with the checklist, then follow the comprehensive guide for detailed instructions!
+
+---
+
+## �📞 Support
 
 If you encounter issues:
 1. Check the troubleshooting section in relevant phase documentation
