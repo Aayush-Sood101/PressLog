@@ -10,8 +10,12 @@ app.use(express.json());
 
 // Routes
 const onboardingRoutes = require('./routes/onboarding');
+const adminRoutes = require('./routes/admin');
+const userRoutes = require('./routes/user');
 
 app.use('/api/onboarding', onboardingRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api', userRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
