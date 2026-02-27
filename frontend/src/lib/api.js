@@ -109,6 +109,38 @@ export const adminApi = {
     return response.data;
   },
 
+  // Get rates for ALL newspapers for a month
+  getAllRates: async (token, month) => {
+    const response = await apiClient.get(`/api/admin/all-rates/${month}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data;
+  },
+
+  // Update rates for a newspaper for a month
+  updateNewspaperRates: async (token, newspaperId, month, rates) => {
+    const response = await apiClient.put(
+      `/api/admin/newspapers/${newspaperId}/rates/${month}`,
+      { rates },
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    return response.data;
+  },
+
+  // Copy rates from one month to another
+  copyRates: async (token, sourceMonth, targetMonth) => {
+    const response = await apiClient.post(
+      '/api/admin/copy-rates',
+      { sourceMonth, targetMonth },
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    return response.data;
+  },
+
   // Get newspaper entries for a month (all newspapers)
   getNewspaperEntries: async (token, month) => {
     const response = await apiClient.get(`/api/admin/newspaper-entries/${month}`, {

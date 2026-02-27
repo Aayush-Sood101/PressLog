@@ -76,6 +76,19 @@ export default function AdminPage() {
     Friday: 10, Saturday: 12, Sunday: 12,
   });
 
+  // All-rates overview state
+  const [allRates, setAllRates] = useState([]);
+  const [ratesMonth, setRatesMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [loadingRates, setLoadingRates] = useState(false);
+  const [editingNewspaperId, setEditingNewspaperId] = useState(null);
+  const [editRates, setEditRates] = useState({});
+  const [savingRates, setSavingRates] = useState(false);
+
+  // Copy rates state
+  const [copySourceMonth, setCopySourceMonth] = useState('');
+  const [copyTargetMonth, setCopyTargetMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [copyingRates, setCopyingRates] = useState(false);
+
   const monthString = format(currentDate, 'yyyy-MM');
 
   // --- Auth validation ---
@@ -147,13 +160,32 @@ export default function AdminPage() {
     } finally { setLoading(false); }
   }, [getToken, selectedDate]);
 
+  const fetchAllRates = useCallback(async (month) => {
+    try {
+      setLoadingRates(true); setError('');
+      const token = await getToken({ template: undefined });
+      const data = await adminApi.getAllRates(token, month);
+      setAllRates(data.newspapers || []);
+    } catch (err) {
+      console.error('Failed to fetch all rates:', err);
+      setError(err.response?.data?.error || 'Failed to load rates overview');
+    } finally { setLoadingRates(false); }
+  }, [getToken]);
+
   useEffect(() => {
     if (!isLoaded || user?.publicMetadata?.role !== 'admin') return;
     if (activeTab === 'calendar') fetchEntries();
     else if (activeTab === 'requests') fetchJoinRequests();
-    else if (activeTab === 'configure') fetchNewspapers();
+    else if (activeTab === 'configure') { fetchNewspapers(); fetchAllRates(ratesMonth); }
     else if (activeTab === 'mark') fetchMarkEntries();
-  }, [activeTab, fetchEntries, fetchJoinRequests, fetchNewspapers, fetchMarkEntries, isLoaded, user]);
+  }, [activeTab, fetchEntries, fetchJoinRequests, fetchNewspapers, fetchMarkEntries, fetchAllRates, ratesMonth, isLoaded, user]);
+
+  // Refetch all rates when ratesMonth changes
+  useEffect(() => {
+    if (activeTab === 'configure') {
+      fetchAllRates(ratesMonth);
+    }
+  }, [activeTab, ratesMonth, fetchAllRates]);
 
   // Refetch mark entries when date changes
   useEffect(() => {
@@ -240,6 +272,56 @@ export default function AdminPage() {
       console.error('Failed to configure newspaper:', err);
       setError(err.response?.data?.error || 'Failed to configure newspaper');
     } finally { setLoading(false); }
+  };
+
+  const handleStartEdit = (newspaper) => {
+    setEditingNewspaperId(newspaper.id);
+    setEditRates({ ...newspaper.rates });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingNewspaperId(null);
+    setEditRates({});
+  };
+
+  const handleSaveRates = async (newspaperId) => {
+    try {
+      setSavingRates(true); setError('');
+      const token = await getToken({ template: undefined });
+      await adminApi.updateNewspaperRates(token, newspaperId, ratesMonth, editRates);
+      setSuccessMsg('Rates updated successfully!');
+      setEditingNewspaperId(null);
+      setEditRates({});
+      await fetchAllRates(ratesMonth);
+    } catch (err) {
+      console.error('Failed to update rates:', err);
+      setError(err.response?.data?.error || 'Failed to update rates');
+    } finally { setSavingRates(false); }
+  };
+
+  const handleCopyRates = async () => {
+    if (!copySourceMonth || !copyTargetMonth) {
+      setError('Please select both source and target months');
+      return;
+    }
+    if (copySourceMonth === copyTargetMonth) {
+      setError('Source and target months cannot be the same');
+      return;
+    }
+    try {
+      setCopyingRates(true); setError('');
+      const token = await getToken({ template: undefined });
+      const result = await adminApi.copyRates(token, copySourceMonth, copyTargetMonth);
+      setSuccessMsg(`Copied rates for ${result.newspapersCopied} newspaper(s) to ${copyTargetMonth}. ${result.entriesCreated} entries created.${result.skipped > 0 ? ` ${result.skipped} already configured (skipped).` : ''}`);
+      setCopySourceMonth('');
+      // Refresh rates if we're viewing the target month
+      if (ratesMonth === copyTargetMonth) {
+        await fetchAllRates(ratesMonth);
+      }
+    } catch (err) {
+      console.error('Failed to copy rates:', err);
+      setError(err.response?.data?.error || 'Failed to copy rates');
+    } finally { setCopyingRates(false); }
   };
 
   const handleDownloadReport = async () => {
@@ -639,7 +721,7 @@ export default function AdminPage() {
         {/* ══════════ CONFIGURE TAB ══════════ */}
         {activeTab === 'configure' && (
           <>
-            {/* Newspaper Management Section */}
+            {/* ── Section 1: Manage Newspapers ── */}
             <div className="bg-white/80 backdrop-blur-sm p-5 sm:p-8 rounded-2xl shadow-sm border border-slate-200/60 mb-6">
               <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-1">Manage Newspapers</h2>
               <p className="text-slate-400 text-sm mb-6">Add or remove newspapers for your university.</p>
@@ -690,8 +772,8 @@ export default function AdminPage() {
               )}
             </div>
 
-            {/* Configure Newspaper Section */}
-            <div className="bg-white/80 backdrop-blur-sm p-5 sm:p-8 rounded-2xl shadow-sm border border-slate-200/60">
+            {/* ── Section 2: Configure Rates (Initial Setup) ── */}
+            <div className="bg-white/80 backdrop-blur-sm p-5 sm:p-8 rounded-2xl shadow-sm border border-slate-200/60 mb-6">
               <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-1">Configure Rates</h2>
               <p className="text-slate-400 text-sm mb-6">Set daily newspaper rates for a month. This will auto-generate an entry for every day.</p>
 
@@ -764,6 +846,172 @@ export default function AdminPage() {
                   ) : 'Configure Newspaper'}
                 </button>
               </form>
+            </div>
+
+            {/* ── Section 3: Monthly Rates Overview (View + Edit) ── */}
+            <div className="bg-white/80 backdrop-blur-sm p-5 sm:p-8 rounded-2xl shadow-sm border border-slate-200/60 mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-1">Monthly Rates Overview</h2>
+                  <p className="text-slate-400 text-sm">View and edit rates for all configured newspapers.</p>
+                </div>
+                <input
+                  type="month"
+                  value={ratesMonth}
+                  onChange={(e) => setRatesMonth(e.target.value)}
+                  className="px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-slate-800 text-sm"
+                />
+              </div>
+
+              {loadingRates ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-10 w-10 border-2 border-indigo-200 border-t-indigo-600 mx-auto"></div>
+                  <p className="mt-4 text-slate-500 text-sm">Loading rates...</p>
+                </div>
+              ) : allRates.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="text-5xl mb-4">📊</div>
+                  <h3 className="text-lg font-semibold text-slate-700">No Rates Configured</h3>
+                  <p className="text-slate-400 text-sm mt-1">No newspapers have been configured for this month yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {allRates.map(newspaper => {
+                    const isEditing = editingNewspaperId === newspaper.id;
+                    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+                    return (
+                      <div key={newspaper.id} className={`rounded-xl border transition-all ${isEditing ? 'border-indigo-300 bg-indigo-50/30 shadow-md' : 'border-slate-200 bg-slate-50'}`}>
+                        {/* Newspaper header */}
+                        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200/60">
+                          <div className="flex items-center gap-3">
+                            <h3 className="text-base font-semibold text-slate-800">{newspaper.name}</h3>
+                            {newspaper.configured ? (
+                              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-full">Configured</span>
+                            ) : (
+                              <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-semibold rounded-full">Not Configured</span>
+                            )}
+                          </div>
+                          {newspaper.configured && (
+                            <div className="flex gap-2">
+                              {isEditing ? (
+                                <>
+                                  <button
+                                    onClick={() => handleSaveRates(newspaper.id)}
+                                    disabled={savingRates}
+                                    className="px-4 py-1.5 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600 disabled:bg-slate-300 transition active:scale-95"
+                                  >
+                                    {savingRates ? 'Saving...' : 'Save'}
+                                  </button>
+                                  <button
+                                    onClick={handleCancelEdit}
+                                    disabled={savingRates}
+                                    className="px-4 py-1.5 bg-white text-slate-600 rounded-lg text-sm font-medium border border-slate-300 hover:bg-slate-50 disabled:opacity-50 transition active:scale-95"
+                                  >
+                                    Cancel
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  onClick={() => handleStartEdit(newspaper)}
+                                  className="px-4 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-200 transition active:scale-95"
+                                >
+                                  Edit
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Rates grid */}
+                        {newspaper.configured && (
+                          <div className="px-5 py-4">
+                            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+                              {days.map(day => (
+                                <div key={day} className="text-center">
+                                  <div className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1.5">{day.slice(0, 3)}</div>
+                                  {isEditing ? (
+                                    <div className="relative">
+                                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs">₹</span>
+                                      <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={editRates[day] ?? 0}
+                                        onChange={(e) => setEditRates({ ...editRates, [day]: parseFloat(e.target.value) || 0 })}
+                                        className="w-full pl-6 pr-2 py-2 border border-indigo-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-slate-800 text-sm text-center bg-white"
+                                      />
+                                    </div>
+                                  ) : (
+                                    <div className="px-3 py-2 bg-white rounded-lg border border-slate-200 text-sm font-semibold text-slate-800">
+                                      ₹{parseFloat(newspaper.rates[day] || 0).toFixed(2)}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* ── Section 4: Copy Rates ── */}
+            <div className="bg-white/80 backdrop-blur-sm p-5 sm:p-8 rounded-2xl shadow-sm border border-slate-200/60">
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-1">Copy Rates</h2>
+              <p className="text-slate-400 text-sm mb-6">Copy all newspaper rates from a previous month to a new month. Already configured newspapers will be skipped.</p>
+
+              <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
+                <div className="flex-1 w-full">
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">From Month</label>
+                  <input
+                    type="month"
+                    value={copySourceMonth}
+                    onChange={(e) => setCopySourceMonth(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-slate-800 text-sm"
+                    placeholder="Select source month"
+                  />
+                </div>
+
+                <div className="hidden sm:flex items-center pb-2.5">
+                  <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  </svg>
+                </div>
+
+                <div className="flex-1 w-full">
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">To Month</label>
+                  <input
+                    type="month"
+                    value={copyTargetMonth}
+                    onChange={(e) => setCopyTargetMonth(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-slate-800 text-sm"
+                  />
+                </div>
+
+                <button
+                  onClick={handleCopyRates}
+                  disabled={copyingRates || !copySourceMonth || !copyTargetMonth}
+                  className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition active:scale-95 text-sm whitespace-nowrap"
+                >
+                  {copyingRates ? (
+                    <span className="flex items-center gap-2">
+                      <span className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></span>
+                      Copying...
+                    </span>
+                  ) : 'Copy Rates'}
+                </button>
+              </div>
+
+              {/* Info */}
+              <div className="mt-6 p-4 bg-amber-50/60 rounded-xl border border-amber-100">
+                <p className="text-sm text-amber-800">
+                  <span className="font-semibold">Note:</span> This will copy rates for all newspapers configured in the source month and also generate daily entries for the target month. Newspapers already configured in the target month will be skipped.
+                </p>
+              </div>
             </div>
           </>
         )}

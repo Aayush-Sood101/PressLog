@@ -394,6 +394,278 @@ router.get('/newspapers/:id/rates/:month', async (req, res) => {
 });
 
 /**
+ * GET /api/admin/all-rates/:month
+ * Get rates for ALL newspapers for a specific month
+ */
+router.get('/all-rates/:month', async (req, res) => {
+  try {
+    const { month } = req.params;
+    const { universityId } = req.user;
+
+    if (!isValidMonthFormat(month)) {
+      return res.status(400).json({ error: 'Invalid month format. Use YYYY-MM' });
+    }
+
+    // Get all newspapers for the university
+    const { data: newspapers, error: npError } = await supabase
+      .from('newspapers')
+      .select('id, name')
+      .eq('university_id', universityId)
+      .order('name', { ascending: true });
+
+    if (npError) {
+      console.error('Database error:', npError);
+      return res.status(500).json({ error: 'Failed to fetch newspapers' });
+    }
+
+    if (!newspapers || newspapers.length === 0) {
+      return res.json({ month, newspapers: [] });
+    }
+
+    const newspaperIds = newspapers.map(n => n.id);
+
+    // Get all rates for these newspapers for the month
+    const { data: rates, error: ratesError } = await supabase
+      .from('newspaper_rates')
+      .select('*')
+      .in('newspaper_id', newspaperIds)
+      .eq('month', month);
+
+    if (ratesError) {
+      console.error('Database error:', ratesError);
+      return res.status(500).json({ error: 'Failed to fetch rates' });
+    }
+
+    // Group rates by newspaper
+    const result = newspapers.map(np => {
+      const npRates = rates.filter(r => r.newspaper_id === np.id);
+      const ratesObj = {};
+      npRates.forEach(r => {
+        ratesObj[r.day_of_week] = parseFloat(r.rate);
+      });
+      return {
+        id: np.id,
+        name: np.name,
+        configured: npRates.length > 0,
+        rates: ratesObj,
+      };
+    });
+
+    res.json({ month, newspapers: result });
+  } catch (error) {
+    console.error('Error fetching all rates:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * PUT /api/admin/newspapers/:id/rates/:month
+ * Update rates for a newspaper for a specific month
+ */
+router.put('/newspapers/:id/rates/:month', async (req, res) => {
+  try {
+    const { id: newspaperId, month } = req.params;
+    const { rates } = req.body;
+    const { universityId } = req.user;
+
+    if (!isValidMonthFormat(month)) {
+      return res.status(400).json({ error: 'Invalid month format. Use YYYY-MM' });
+    }
+
+    if (!rates || typeof rates !== 'object') {
+      return res.status(400).json({ error: 'Rates must be an object with day names as keys' });
+    }
+
+    // Verify newspaper ownership
+    const { data: newspaper } = await supabase
+      .from('newspapers')
+      .select('*')
+      .eq('id', newspaperId)
+      .eq('university_id', universityId)
+      .single();
+
+    if (!newspaper) {
+      return res.status(404).json({ error: 'Newspaper not found' });
+    }
+
+    const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const validRates = {};
+    for (const day of daysOfWeek) {
+      const rate = parseFloat(rates[day]);
+      if (isNaN(rate) || rate < 0) {
+        return res.status(400).json({ error: `Invalid rate for ${day}` });
+      }
+      validRates[day] = rate;
+    }
+
+    // Delete existing rates for this newspaper/month
+    await supabase
+      .from('newspaper_rates')
+      .delete()
+      .eq('newspaper_id', newspaperId)
+      .eq('month', month);
+
+    // Insert new rates
+    const rateInserts = daysOfWeek.map(day => ({
+      newspaper_id: newspaperId,
+      month: month,
+      day_of_week: day,
+      rate: validRates[day],
+    }));
+
+    const { error: ratesError } = await supabase
+      .from('newspaper_rates')
+      .insert(rateInserts)
+      .select();
+
+    if (ratesError) {
+      console.error('Database error:', ratesError);
+      return res.status(500).json({ error: 'Failed to update rates' });
+    }
+
+    res.json({
+      message: 'Rates updated successfully',
+      newspaperId,
+      month,
+      rates: validRates,
+    });
+  } catch (error) {
+    console.error('Error updating rates:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /api/admin/copy-rates
+ * Copy newspaper rates from one month to another (creates entries too)
+ */
+router.post('/copy-rates', async (req, res) => {
+  try {
+    const { sourceMonth, targetMonth } = req.body;
+    const { universityId } = req.user;
+
+    if (!isValidMonthFormat(sourceMonth) || !isValidMonthFormat(targetMonth)) {
+      return res.status(400).json({ error: 'Invalid month format. Use YYYY-MM' });
+    }
+
+    if (sourceMonth === targetMonth) {
+      return res.status(400).json({ error: 'Source and target months must be different' });
+    }
+
+    // Get all newspapers for the university
+    const { data: newspapers, error: npError } = await supabase
+      .from('newspapers')
+      .select('id, name')
+      .eq('university_id', universityId);
+
+    if (npError || !newspapers || newspapers.length === 0) {
+      return res.status(400).json({ error: 'No newspapers found for your university' });
+    }
+
+    const newspaperIds = newspapers.map(n => n.id);
+
+    // Get source month rates
+    const { data: sourceRates, error: srcError } = await supabase
+      .from('newspaper_rates')
+      .select('*')
+      .in('newspaper_id', newspaperIds)
+      .eq('month', sourceMonth);
+
+    if (srcError) {
+      console.error('Database error:', srcError);
+      return res.status(500).json({ error: 'Failed to fetch source month rates' });
+    }
+
+    if (!sourceRates || sourceRates.length === 0) {
+      return res.status(400).json({ error: `No rates configured for ${sourceMonth}` });
+    }
+
+    // Find which newspapers have source rates
+    const sourceNewspaperIds = [...new Set(sourceRates.map(r => r.newspaper_id))];
+
+    // Check which newspapers already have target month rates
+    const { data: existingTargetRates } = await supabase
+      .from('newspaper_rates')
+      .select('newspaper_id')
+      .in('newspaper_id', sourceNewspaperIds)
+      .eq('month', targetMonth);
+
+    const alreadyConfiguredIds = new Set((existingTargetRates || []).map(r => r.newspaper_id));
+
+    // Filter to only newspapers that don't already have target month rates
+    const ratesToCopy = sourceRates.filter(r => !alreadyConfiguredIds.has(r.newspaper_id));
+
+    if (ratesToCopy.length === 0) {
+      return res.status(400).json({ error: `All newspapers are already configured for ${targetMonth}` });
+    }
+
+    // Insert copied rates
+    const rateInserts = ratesToCopy.map(r => ({
+      newspaper_id: r.newspaper_id,
+      month: targetMonth,
+      day_of_week: r.day_of_week,
+      rate: r.rate,
+    }));
+
+    const { error: insertError } = await supabase
+      .from('newspaper_rates')
+      .insert(rateInserts);
+
+    if (insertError) {
+      console.error('Database error:', insertError);
+      return res.status(500).json({ error: 'Failed to copy rates' });
+    }
+
+    // Generate entries for each copied newspaper
+    const copiedNewspaperIds = [...new Set(ratesToCopy.map(r => r.newspaper_id))];
+    const dates = getDatesInMonth(targetMonth);
+    let totalEntriesCreated = 0;
+
+    for (const npId of copiedNewspaperIds) {
+      // Check if entries already exist
+      const { data: existingEntries } = await supabase
+        .from('newspaper_entries')
+        .select('id')
+        .eq('newspaper_id', npId)
+        .gte('date', `${targetMonth}-01`)
+        .lte('date', `${targetMonth}-31`)
+        .limit(1);
+
+      if (existingEntries && existingEntries.length > 0) continue;
+
+      const entryInserts = dates.map(date => ({
+        newspaper_id: npId,
+        date: formatDate(date),
+        status: 'unmarked',
+      }));
+
+      const { error: entryError } = await supabase
+        .from('newspaper_entries')
+        .insert(entryInserts);
+
+      if (!entryError) {
+        totalEntriesCreated += entryInserts.length;
+      }
+    }
+
+    const copiedNewspaperNames = newspapers
+      .filter(n => copiedNewspaperIds.includes(n.id))
+      .map(n => n.name);
+
+    res.status(201).json({
+      message: `Rates copied from ${sourceMonth} to ${targetMonth}`,
+      newspapersCopied: copiedNewspaperNames,
+      count: copiedNewspaperIds.length,
+      entriesCreated: totalEntriesCreated,
+      skipped: alreadyConfiguredIds.size,
+    });
+  } catch (error) {
+    console.error('Error copying rates:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
  * GET /api/admin/newspaper-entries/:month
  * Get all newspaper entries for a specific month (all newspapers)
  */
