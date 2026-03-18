@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useUser, useAuth } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { Newspaper, Calendar, History, User, Settings } from 'lucide-react';
+import { Newspaper, Calendar } from 'lucide-react';
 import { userApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/page-header';
@@ -100,20 +100,6 @@ export default function DashboardPage() {
       <button className="sidebar-nav-item active" onClick={() => setSidebarOpen(false)}>
         <Calendar className="w-4 h-4" />
         Today&apos;s Deliveries
-      </button>
-      <button className="sidebar-nav-item" disabled>
-        <History className="w-4 h-4" />
-        History
-      </button>
-
-      <div className="sidebar-section-label mt-4">Account</div>
-      <button className="sidebar-nav-item" disabled>
-        <User className="w-4 h-4" />
-        My Profile
-      </button>
-      <button className="sidebar-nav-item" disabled>
-        <Settings className="w-4 h-4" />
-        Settings
       </button>
     </>
   );

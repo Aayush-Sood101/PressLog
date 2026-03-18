@@ -1,4 +1,7 @@
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
 @import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
 
 :root {
   --background: #f5f7fa;
