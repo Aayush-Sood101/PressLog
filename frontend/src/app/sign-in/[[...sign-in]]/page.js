@@ -1,26 +1,44 @@
 import { SignIn } from '@clerk/nextjs';
+import { Newspaper } from 'lucide-react';
+import { PageBackground } from '@/components/shared';
 
 export default function SignInPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-indigo-50/30 to-violet-50/40 px-4" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 -left-20 w-72 h-72 bg-indigo-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
-        <div className="absolute bottom-20 -right-20 w-72 h-72 bg-violet-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
+    <PageBackground>
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="relative animate-fade-in-up max-w-md w-full">
+          {/* Branding header */}
+          <div className="text-center mb-6">
+            <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mx-auto mb-3 shadow-sm">
+              <Newspaper className="w-6 h-6 text-primary-foreground" />
+            </div>
+            <h1 className="text-xl font-bold text-foreground">PressLog</h1>
+            <p className="text-sm text-muted-foreground mt-1">Welcome back — sign in to continue</p>
+          </div>
+
+          <SignIn
+            appearance={{
+              elements: {
+                rootBox: "mx-auto",
+                card: "shadow-lg rounded-lg border border-border/60",
+              },
+            }}
+            routing="path"
+            path="/sign-in"
+            signUpUrl="/sign-up"
+            fallbackRedirectUrl="/onboarding"
+          />
+
+          {/* Footer links */}
+          <div className="mt-6 text-center text-xs text-muted-foreground space-x-4">
+            <span>Help Center</span>
+            <span>·</span>
+            <span>Privacy Policy</span>
+            <span>·</span>
+            <span>Terms of Service</span>
+          </div>
+        </div>
       </div>
-      <div className="relative animate-fade-in-up">
-        <SignIn 
-          appearance={{
-            elements: {
-              rootBox: "mx-auto",
-              card: "shadow-xl rounded-2xl border border-slate-200/60",
-            },
-          }}
-          routing="path"
-          path="/sign-in"
-          signUpUrl="/sign-up"
-          afterSignInUrl="/onboarding"
-        />
-      </div>
-    </div>
+    </PageBackground>
   );
 }

@@ -30,14 +30,6 @@ const requireAuth = async (req, res, next) => {
       status: clerkUser.publicMetadata?.status,
     };
 
-    // Debug logging
-    console.log('[Auth] User authenticated:', {
-      clerkId: payload.sub,
-      role: clerkUser.publicMetadata?.role,
-      universityId: clerkUser.publicMetadata?.universityId,
-      status: clerkUser.publicMetadata?.status,
-    });
-
     next();
   } catch (error) {
     console.error('Auth error:', error);

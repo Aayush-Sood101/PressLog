@@ -35,12 +35,14 @@ const formatDate = (date) => {
 };
 
 /**
- * Validate month string format
+ * Validate month string format and value
  * @param {string} monthString 
  * @returns {boolean}
  */
 const isValidMonthFormat = (monthString) => {
-  return /^\d{4}-\d{2}$/.test(monthString);
+  if (!/^\d{4}-\d{2}$/.test(monthString)) return false;
+  const [year, month] = monthString.split('-').map(Number);
+  return year >= 2000 && year <= 2100 && month >= 1 && month <= 12;
 };
 
 module.exports = {
