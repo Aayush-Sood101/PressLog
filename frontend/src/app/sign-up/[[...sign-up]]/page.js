@@ -25,8 +25,8 @@ export default function SignUpPage() {
           <div className="h-32 bg-[#1a355b] relative flex items-center justify-center overflow-hidden w-full">
             <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuDwG4Ggu1OlzDFqDG8ed9ZenEclWMqIHJKWttGLbj32cJqPUYMqwUtI8kLZ82aeGoasGRw9S5dOFPmWa9vZdPtEPpNu-PbBUeJRHtKKfqWwTx8X2-1QZQmRYpjAWb5oNwhKuKt_Pmbnw8SPjlEEsILtmlgR3TZGURPleY3OTUwGJIXi1ZRiGRBeNIt5CsXnv9_I82WMX5E3wd1L_f3o1nHZiFQYKIovPAZjupskdxOctEeiKbpZ4QG2XXiVLP3jciNg9-iROZ-PqC0l")', backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
             <div className="relative z-10 text-center">
-              <h1 className="text-white text-2xl font-bold">Join the Newsroom</h1>
-              <p className="text-slate-200 text-sm">Empowering the next generation of journalists</p>
+              <h1 className="text-white text-2xl font-bold">Join to Track Deliveries!</h1>
+              <p className="text-slate-200 text-sm">Empowering next gen libraries</p>
             </div>
           </div>
             
