@@ -10,7 +10,7 @@ export default function SignUpPage() {
           <div className="size-8 flex items-center justify-center bg-[#1a355b] rounded-lg text-white">
             <Newspaper className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-xl font-bold leading-tight tracking-tight">NewsTrack</h2>
+          <h2 className="text-xl font-bold leading-tight tracking-tight">PressLog</h2>
         </Link>
         <div className="flex items-center gap-4">
           <span className="text-sm text-slate-500 hidden sm:inline">Already have an account?</span>
@@ -52,7 +52,7 @@ export default function SignUpPage() {
       </main>
 
       <footer className="py-6 px-10 flex justify-center items-center gap-4 text-slate-400 text-xs text-center border-t border-slate-200">
-        <p>© {new Date().getFullYear()} NewsTrack. All rights reserved.</p>
+        <p>© {new Date().getFullYear()} PressLog. All rights reserved.</p>
       </footer>
     </div>
   );

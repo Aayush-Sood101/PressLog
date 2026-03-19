@@ -34,7 +34,7 @@ export function Navbar() {
           <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground">
             <Newspaper className="w-5 h-5" />
           </div>
-          <h2 className="text-foreground text-xl font-bold leading-tight tracking-tight">NewsTrack</h2>
+          <h2 className="text-foreground text-xl font-bold leading-tight tracking-tight">PressLog</h2>
         </Link>
       </div>
 

@@ -12,7 +12,7 @@ export function Footer() {
             <div className="size-8 bg-[#1a355b] rounded-lg flex items-center justify-center text-white">
               <Newspaper className="w-5 h-5 text-white" />
             </div>
-            <h2 className="text-xl font-bold">NewsTrack</h2>
+            <h2 className="text-xl font-bold">PressLog</h2>
           </div>
           
           <nav className="flex gap-6 text-sm font-medium">
@@ -24,7 +24,7 @@ export function Footer() {
         
         <div className="mt-8 pt-8 border-t border-slate-800 flex flex-col items-center justify-center">
           <p className="text-sm font-medium uppercase tracking-wider text-slate-500 text-center">
-            © {new Date().getFullYear()} NewsTrack Systems Inc. All rights reserved.
+            © {new Date().getFullYear()} PressLog Systems Inc. All rights reserved.
           </p>
         </div>
       </div>

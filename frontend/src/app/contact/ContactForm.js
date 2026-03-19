@@ -69,7 +69,7 @@ export default function ContactForm() {
           Get In Touch
         </h2>
         <p className="text-base md:text-lg text-gray-300 font-medium">
-          Have a question or feedback? We&;d love to hear from you.
+          Have a question or feedback? We&apos;d love to hear from you.
         </p>
       </div>
 
